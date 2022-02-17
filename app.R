@@ -86,9 +86,10 @@ body <- dashboardBody(tabItems(
           fluidRow(
             tabBox(title = "Plot",
                    width = 12,
+                   tabPanel("CKD Count", plotlyOutput("plot_CKD")),
                    tabPanel("Age", plotlyOutput("plot_age")),
-                   tabPanel("BP", plotlyOutput("plot_BP")),
-                   tabPanel("CKD Count", plotlyOutput("plot_CKD"))
+                   tabPanel("BP", plotlyOutput("plot_BP"))
+                   
                    
             )
           ),
@@ -118,35 +119,68 @@ server <- function(input, output) {
       melt(id = "classification")
   })
   
-  # # A plot showing the mass of characters -----------------------------
-  # output$plot_age <- renderPlotly({
-  #   dat <- subset(mwInput(), variable == "age")
-  #   
-  #   # Generate Plot ----------------------------------------------
-  #   ggplot(data = dat, aes(x = "age", y = "classification", fill = classification)) + geom_bar(stat = "identity")
-  # })
-  
-  
-  # age vs albumin scatter plot
+
+ 
+  # CKD,Age,Albumin Levels scatter plots
   output$plot_age <- renderPlotly({
-    ggplot(data =swInput(), aes_string(x = "age", y = "al")) + geom_point()+
-     facet_wrap(~classification)
+    scatter <- swInput()%>%
+      group_by(classification)%>% 
+      ggplot( aes(x = age,
+                  y = al,
+                  )) +
+      geom_point(aes(color = factor(classification),
+                     size = 3))+ 
+      scale_color_brewer(palette = "Set3")+ 
+      labs(x = "Age", 
+           y = "Albumin levels", 
+           title = "Correlation between CKD,Albumnin Levels,and Age ")
+    
+    ggplotly(scatter, tooltip = "text")
   })
   
-  # albumin levels by CKD diagnosis
   
+  # CKD Diagnosis
   output$plot_CKD <- renderPlotly({
-    ggplot(data =swInput(), aes_string(x = "classification")) + geom_bar()
-  })
+    barchart <- swInput() %>%
+      group_by(classification) %>%
+      summarize('count' = n()) %>%
+      ggplot(aes(x = classification, 
+                 y = count, 
+                 fill = classification
+      ))  + 
+      geom_bar(stat = "identity") +
+      scale_fill_brewer(palette = "Set3")+ 
+      coord_flip()+ 
+      labs(x = "CKD diagnosis", 
+           y = "Count", 
+           title = "Number of patients with CKD") 
+    
+    ggplotly(barchart, tooltip = "y")
+  })  
   
   
   # A plot showing the BP of Patients -----------------------------------
-  output$plot_BP <- renderPlotly({
-    ggplot(swInput(), aes(x = bp)) +
-      geom_histogram(colour = "white", fill = "peachpuff", bins = 50) +
-      labs(x = "Blood Pressure") +
-      facet_wrap(~classification)
-  }) 
+  # output$plot_BP <- renderPlotly({
+  #   ggplot(swInput(), aes(x = bp)) +
+  #     geom_histogram(colour = "white", fill = "peachpuff", bins = 50) +
+  #     labs(x = "Blood Pressure") +
+  #     facet_wrap(~classification)
+  # }) 
+  # 
+
+  output$plot_BP  <- renderPlotly({
+    swInput() %>%
+      group_by(classification) %>%
+      ggplot(aes(x = classification, 
+                 y = bp,
+                 fill = classification,))+
+      geom_violin() + 
+      scale_fill_brewer(palette = "Set3")+ 
+      labs(x = "CKD diagnosis", 
+           y = "Blood Pressure Levels", 
+           title = "CKD and BP Levels") 
+  })
+
   
   # Data table of characters ----------------------------------------------
   output$table <- DT::renderDataTable({

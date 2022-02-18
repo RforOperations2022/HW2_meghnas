@@ -6,7 +6,7 @@ library(plotly)
 library(shinythemes)
 library(psych)
 
-# Load and clean data ----------------------------------------------
+# Loading diabetes dataset ----------------------------------------------
 MyDat <- read.csv("kidney_disease.csv")   #maybe change this to load for simplicity 
 
 # Avoid plotly issues ----------------------------------------------
@@ -39,6 +39,7 @@ sidebar <- dashboardSidebar(
     menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
     menuItem("Table", icon = icon("table"), tabName = "table", badgeLabel = "new", badgeColor = "green"),
     
+    #slider for age seleciton
     sliderInput("age",
                 "Slect age range:",
                 min = min(MyDat$age, na.rm = T),
@@ -46,16 +47,11 @@ sidebar <- dashboardSidebar(
                 value = c(min(MyDat$age,na.rm =T), max(MyDat$age, na.rm =T)),
                 step =1),
     
-    # # Inputs: select variables to plot ----------------------------------------------
-    # selectInput("Hypertension",
-    #             "Has Hypertension?",
-    #             choices = sort(unique(MyDat$Hypertension)),
-    #             multiple = TRUE,
-    #             selectize = TRUE,
-    #             selected = c("no")) ,
-    
+   # radio button for Hypertension diagnosis
     radioButtons("hyp", "Has Hypertension?", choices = c("yes","no"), selected = c("no")),
     
+   
+   # radio button for Diabetes Mellitus diagnosis
     radioButtons("dia", "Has Diabetes Mellitus?", choices = c("yes","no"), selected = c("no"))
     
     
@@ -69,19 +65,22 @@ body <- dashboardBody(tabItems(
   # Plot page ----------------------------------------------
   tabItem("plot",
           
-          # Input and Value Boxes ----------------------------------------------
+          # Input and Value Boxes for Total Patient count and CKD patient count ----------------------------------------------
           fluidRow(
             infoBoxOutput("TP"),
-            infoBoxOutput("CKD")
+            infoBoxOutput("CKD"),
+            valueBoxOutput("hemo")
             
+          # Input and Value Boxes for Age and Blood Pressure 
           ),
           fluidRow(
             infoBoxOutput("Age"),
-            valueBoxOutput("BP")
+            valueBoxOutput("BP"),
+            valueBoxOutput("Sugar")
             
           ),
           
-          # Plot ----------------------------------------------
+          # Plot for CKD counts, Age by CKD diagnosis and Albumin levels,Blood Pressure  ----------------------------------------------
           fluidRow(
             tabBox(title = "Plot",
                    width = 12,
@@ -93,7 +92,7 @@ body <- dashboardBody(tabItems(
             )
           ),
           
-          # Data Table Page ----------------------------------------------
+          # Data Table Page for Summaryy Statistics ----------------------------------------------
           tabItem("table",
                   fluidPage(
                     box(title = "Summary Statistics for CKD Dataset", DT::dataTableOutput("table"), width = 12))
@@ -104,14 +103,13 @@ body <- dashboardBody(tabItems(
 
 ui <- dashboardPage(header, sidebar, body)
 
-# Define server function required to create plots and value boxes -----
-# Define server function required to create plots and value boxes -----
+
 server <- function(input, output) {
   
   # Reactive data function -------------------------------------------
   swInput <- reactive({
     MyDat <- MyDat %>%
-    # Slider Filter ----------------------------------------------
+    # Slider Filter for age ----------------------------------------------
     filter(age >= input$age[1] & age <= input$age[2])
     
     # Hypertension Filter ----------------------------------------------
@@ -167,7 +165,7 @@ server <- function(input, output) {
   })
   
   
-  # A plot showing the different in BP levels for patients with and wihout CKD -----------------------------------
+  # A plot showing the different in BP levels for patients with and wihout CKD 
   
   output$plot_BP  <- renderPlotly({
     swInput() %>%
@@ -183,6 +181,7 @@ server <- function(input, output) {
   })
   
   
+  #Datatabe showing summary statistics for some Key variables 
   
   output$table <- DT::renderDataTable({ d <- describe(swInput()[ , c('age','blood_pressure','Albumin','Blood_sugar','Hemoglobin')] ,fast=TRUE) 
   })
@@ -197,7 +196,7 @@ server <- function(input, output) {
     
   })
   
-  # Mass mean info box ----------------------------------------------
+  # Mean age info box ----------------------------------------------
   output$Age <- renderInfoBox({
     sw <- swInput()
     num <- round(mean(sw$age, na.rm = T), 2)
@@ -205,7 +204,7 @@ server <- function(input, output) {
     infoBox("Avg Age", value = num, icon = icon("balance-scale"), color = "purple")
   })
   
-  # Height mean value box ----------------------------------------------
+  # Mean Blood Pressure value box ----------------------------------------------
   output$BP <- renderValueBox({
     sw <- swInput()
     num <- round(mean(sw$blood_pressure, na.rm = T), 2)
@@ -213,7 +212,24 @@ server <- function(input, output) {
     valueBox(subtitle = "Avg Blood Pressure", value = num, icon = icon("sort-numeric-asc"), color = "green")
   })
   
-  #Total number of Patients 
+  # Mean Sugal levels value box ----------------------------------------------
+  output$Sugar <- renderValueBox({
+    sw <- swInput()
+    num <- round(mean(sw$Sugar, na.rm = T), 2)
+    
+    valueBox(subtitle = "Average Sugar Levels", value = num, icon = icon("sort-numeric-asc"), color = "red")
+  })
+  
+  # Mean Hemoglobin levels value box ----------------------------------------------
+  output$hemo <- renderValueBox({
+    sw <- swInput()
+    num <- round(mean(sw$Hemoglobin, na.rm = T), 2)
+    
+    valueBox(subtitle = "Average Hemoglobin Levels", value = num, icon = icon("sort-numeric-asc"), color = "red")
+  })
+  
+  
+  #Total number of Patients value box
   output$TP <- renderValueBox({
     sw <- swInput()
     num <- length(unique(sw$id))

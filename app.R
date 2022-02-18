@@ -7,19 +7,19 @@ library(shinythemes)
 library(psych)
 
 # Load and clean data ----------------------------------------------
-MyDat <- read.csv("kidney_disease.csv")  %>%   #maybe change this to load for simplicity 
-  mutate(classification = as.character(classification),
-         pc = as.character(pc),
-         rbc = as.character(rbc),
-         pcc = as.character(pcc),
-         ba = as.character(ba),
-         htn =as.character(htn),
-         dm	= as.character(dm),
-         cad= as.character(cad),
-         appet= as.character(appet),
-         pe	=as.character(pe),
-         ane = as.character(ane),
-         id = as.factor(id))
+MyDat <- read.csv("kidney_disease.csv")   #maybe change this to load for simplicity 
+#   mutate(CKD_Diagnosis = as.character(CKD_Diagnosis),
+#          pc = as.character(pc),
+#          rbc = as.character(rbc),
+#          pcc = as.character(pcc),
+#          ba = as.character(ba),
+#          htn =as.character(htn),
+#          dm	= as.character(dm),
+#          cad= as.character(cad),
+#          appet= as.character(appet),
+#          pe	=as.character(pe),
+#          ane = as.character(ane),
+#          id = as.factor(id))
 # Avoid plotly issues ----------------------------------------------
 pdf(NULL)
 
@@ -117,11 +117,11 @@ server <- function(input, output) {
   # Count of CKD Diagnosis patients bar chart
   output$plot_CKD <- renderPlotly({
     barchart <- swInput() %>%
-      group_by(classification) %>%
+      group_by(CKD_Diagnosis) %>%
       summarize('count' = n()) %>%
-      ggplot(aes(x = classification, 
+      ggplot(aes(x = CKD_Diagnosis, 
                  y = count, 
-                 fill = classification
+                 fill = CKD_Diagnosis
       ))  + 
       geom_bar(stat = "identity") +
       scale_fill_brewer(palette = "Set3")+ 
@@ -136,11 +136,11 @@ server <- function(input, output) {
   # Correlation between CKD,Age,Albumin Levels scatter plots
   output$plot_age <- renderPlotly({
     scatter <- swInput()%>%
-      group_by(classification)%>% 
+      group_by(CKD_Diagnosis)%>% 
       ggplot( aes(x = age,
-                  y = al,
+                  y = Albumin,
       )) +
-      geom_point(aes(color = factor(classification),
+      geom_point(aes(color = factor(CKD_Diagnosis),
                      size = 3))+ 
       scale_color_brewer(palette = "Set3")+ 
       labs(x = "Age", 
@@ -155,10 +155,10 @@ server <- function(input, output) {
   
   output$plot_BP  <- renderPlotly({
     swInput() %>%
-      group_by(classification) %>%
-      ggplot(aes(x = classification, 
-                 y = bp,
-                 fill = classification,))+
+      group_by(CKD_Diagnosis) %>%
+      ggplot(aes(x = CKD_Diagnosis, 
+                 y = blood_pressure,
+                 fill = CKD_Diagnosis,))+
       geom_violin() + 
       scale_fill_brewer(palette = "Set3")+ 
       labs(x = "CKD diagnosis", 
@@ -167,23 +167,15 @@ server <- function(input, output) {
   })
   
   
-  # Data table of characters ----------------------------------------------
-  # output$table <- DT::renderDataTable({
-  #   m <- descr(swInput(),  select = c(id,age,classification,bp),
-  #              stats = c("mean", "sd", "min", "q1", "med", "q3", "max", "iqr", "cv"),
-  #              transpose = FALSE) 
-  #   m %>% as_tibble(rownames="Statistic")
-  # })
   
-  
-  output$table <- DT::renderDataTable({describe(swInput()[ , c('age', 'bp','al','sg','hemo','pcv','wc','rc')] ,fast=TRUE)
+  output$table <- DT::renderDataTable({ d <- describe(swInput()[ , c('age','blood_pressure','Albumin','Blood_sugar','Hemoglobin')] ,fast=TRUE) 
   })
   
   
   # CKD patients count value box ----------------------------------------------
   output$CKD <- renderValueBox({
     sw <- swInput()
-    num <- length(which(sw$classification=="ckd"))
+    num <- length(which(sw$CKD_Diagnosis=="ckd"))
     
     valueBox(subtitle = "Number of patients with CKD diagnosis", value = num, icon = icon("sort-numeric-asc"), color = "green")
     
@@ -200,7 +192,7 @@ server <- function(input, output) {
   # Height mean value box ----------------------------------------------
   output$BP <- renderValueBox({
     sw <- swInput()
-    num <- round(mean(sw$bp, na.rm = T), 2)
+    num <- round(mean(sw$blood_pressure, na.rm = T), 2)
     
     valueBox(subtitle = "Avg Blood Pressure", value = num, icon = icon("sort-numeric-asc"), color = "green")
   })

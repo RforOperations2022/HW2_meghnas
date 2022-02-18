@@ -8,18 +8,7 @@ library(psych)
 
 # Load and clean data ----------------------------------------------
 MyDat <- read.csv("kidney_disease.csv")   #maybe change this to load for simplicity 
-#   mutate(CKD_Diagnosis = as.character(CKD_Diagnosis),
-#          pc = as.character(pc),
-#          rbc = as.character(rbc),
-#          pcc = as.character(pcc),
-#          ba = as.character(ba),
-#          htn =as.character(htn),
-#          dm	= as.character(dm),
-#          cad= as.character(cad),
-#          appet= as.character(appet),
-#          pe	=as.character(pe),
-#          ane = as.character(ane),
-#          id = as.factor(id))
+
 # Avoid plotly issues ----------------------------------------------
 pdf(NULL)
 
@@ -55,8 +44,17 @@ sidebar <- dashboardSidebar(
                 min = min(MyDat$age, na.rm = T),
                 max = max(MyDat$age, na.rm =T),
                 value = c(min(MyDat$age,na.rm =T), max(MyDat$age, na.rm =T)),
-                step =1)
+                step =1),
     
+    # # Inputs: select variables to plot ----------------------------------------------
+    # selectInput("Hypertension",
+    #             "Has Hypertension?",
+    #             choices = sort(unique(MyDat$Hypertension)),
+    #             multiple = TRUE,
+    #             selectize = TRUE,
+    #             selected = c("no")) ,
+    
+    radioButtons("hyp", "Has Hypertension?", choices = c("yes","no"), selected = c("no"))
     
   )
 )
@@ -111,6 +109,14 @@ server <- function(input, output) {
     MyDat <- MyDat %>%
     # Slider Filter ----------------------------------------------
     filter(age >= input$age[1] & age <= input$age[2])
+    
+    # Homeworld Filter ----------------------------------------------
+    if (length(input$hyp) > 0 ) {
+      MyDat <- subset(MyDat, Hypertension %in% input$hyp)
+    }
+    
+    # Return dataframe ----------------------------------------------
+    return(MyDat)
   })
   
   

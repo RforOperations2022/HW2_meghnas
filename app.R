@@ -4,9 +4,10 @@ library(reshape2)
 library(dplyr)
 library(plotly)
 library(shinythemes)
+library(psych)
 
 # Load and clean data ----------------------------------------------
-MyDat <- read.csv("kidney_disease.csv")  %>%
+MyDat <- read.csv("kidney_disease.csv")  %>%   #maybe change this to load for simplicity 
   mutate(classification = as.character(classification),
          pc = as.character(pc),
          rbc = as.character(rbc),
@@ -47,23 +48,16 @@ sidebar <- dashboardSidebar(
     
     # Menu Items ----------------------------------------------
     menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
-    menuItem("Table", icon = icon("table"), tabName = "table", badgeLabel = "new", badgeColor = "green")
+    menuItem("Table", icon = icon("table"), tabName = "table", badgeLabel = "new", badgeColor = "green"),
     
-    # # Inputs: select variables to plot ----------------------------------------------
-    # selectInput("Select",
-    #             "Variable:",
-    #             choices = sort(unique(starwars.load$homeworld)),
-    #             multiple = TRUE,
-    #             selectize = TRUE,
-    #             selected = c("Naboo", "Tatooine")),
+    sliderInput("age",
+                "Slect age range:",
+                min = min(MyDat$age, na.rm = T),
+                max = max(MyDat$age, na.rm =T),
+                value = c(min(MyDat$age,na.rm =T), max(MyDat$age, na.rm =T)),
+                step =1)
     
-    # # Birth year Selection ----------------------------------------------
-    # sliderInput("birthSelect",
-    #             "Birth Year:",
-    #             min = min(starwars.load$birth_year, na.rm = T),
-    #             max = max(starwars.load$birth_year, na.rm = T),
-    #             value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
-    #             step = 1)
+    
   )
 )
 
@@ -76,9 +70,12 @@ body <- dashboardBody(tabItems(
           # Input and Value Boxes ----------------------------------------------
           fluidRow(
             infoBoxOutput("TP"),
-            infoBoxOutput("CKD"),
+            infoBoxOutput("CKD")
+            
+          ),
+          fluidRow(
             infoBoxOutput("Age"),
-            valueBoxOutput("BP"),
+            valueBoxOutput("BP")
             
           ),
           
@@ -89,7 +86,7 @@ body <- dashboardBody(tabItems(
                    tabPanel("CKD Count", plotlyOutput("plot_CKD")),
                    tabPanel("Age", plotlyOutput("plot_age")),
                    tabPanel("BP", plotlyOutput("plot_BP"))
-                   
+            )    
                    
             )
           ),
@@ -97,9 +94,9 @@ body <- dashboardBody(tabItems(
           # Data Table Page ----------------------------------------------
           tabItem("table",
                   fluidPage(
-                    box(title = "CKD Data", DT::dataTableOutput("table"), width = 12))
+                    box(title = "Summary Statistics for CKD Dataset", DT::dataTableOutput("table"), width = 12))
           )
-  )
+  
 )
 )
 
@@ -111,35 +108,13 @@ server <- function(input, output) {
   
   # Reactive data function -------------------------------------------
   swInput <- reactive({
-    MyDat <- MyDat 
-  })
-  # Reactive melted data ----------------------------------------------
-  mwInput <- reactive({
-    swInput() %>%
-      melt(id = "classification")
-  })
-  
-
- 
-  # CKD,Age,Albumin Levels scatter plots
-  output$plot_age <- renderPlotly({
-    scatter <- swInput()%>%
-      group_by(classification)%>% 
-      ggplot( aes(x = age,
-                  y = al,
-                  )) +
-      geom_point(aes(color = factor(classification),
-                     size = 3))+ 
-      scale_color_brewer(palette = "Set3")+ 
-      labs(x = "Age", 
-           y = "Albumin levels", 
-           title = "Correlation between CKD,Albumnin Levels,and Age ")
-    
-    ggplotly(scatter, tooltip = "text")
+    MyDat <- MyDat %>%
+    # Slider Filter ----------------------------------------------
+    filter(age >= input$age[1] & age <= input$age[2])
   })
   
   
-  # CKD Diagnosis
+  # Count of CKD Diagnosis patients bar chart
   output$plot_CKD <- renderPlotly({
     barchart <- swInput() %>%
       group_by(classification) %>%
@@ -158,16 +133,26 @@ server <- function(input, output) {
     ggplotly(barchart, tooltip = "y")
   })  
   
+  # Correlation between CKD,Age,Albumin Levels scatter plots
+  output$plot_age <- renderPlotly({
+    scatter <- swInput()%>%
+      group_by(classification)%>% 
+      ggplot( aes(x = age,
+                  y = al,
+      )) +
+      geom_point(aes(color = factor(classification),
+                     size = 3))+ 
+      scale_color_brewer(palette = "Set3")+ 
+      labs(x = "Age", 
+           y = "Albumin levels", 
+           title = "Correlation between CKD,Albumnin Levels,and Age ")
+    
+    ggplotly(scatter, tooltip = "text")
+  })
   
-  # A plot showing the BP of Patients -----------------------------------
-  # output$plot_BP <- renderPlotly({
-  #   ggplot(swInput(), aes(x = bp)) +
-  #     geom_histogram(colour = "white", fill = "peachpuff", bins = 50) +
-  #     labs(x = "Blood Pressure") +
-  #     facet_wrap(~classification)
-  # }) 
-  # 
-
+  
+  # A plot showing the different in BP levels for patients with and wihout CKD -----------------------------------
+  
   output$plot_BP  <- renderPlotly({
     swInput() %>%
       group_by(classification) %>%
@@ -180,12 +165,20 @@ server <- function(input, output) {
            y = "Blood Pressure Levels", 
            title = "CKD and BP Levels") 
   })
-
+  
   
   # Data table of characters ----------------------------------------------
-  output$table <- DT::renderDataTable({
-    subset(swInput(), select = c(id,age,classification,bp))
+  # output$table <- DT::renderDataTable({
+  #   m <- descr(swInput(),  select = c(id,age,classification,bp),
+  #              stats = c("mean", "sd", "min", "q1", "med", "q3", "max", "iqr", "cv"),
+  #              transpose = FALSE) 
+  #   m %>% as_tibble(rownames="Statistic")
+  # })
+  
+  
+  output$table <- DT::renderDataTable({describe(swInput()[ , c('age', 'bp','al','sg','hemo','pcv','wc','rc')] ,fast=TRUE)
   })
+  
   
   # CKD patients count value box ----------------------------------------------
   output$CKD <- renderValueBox({

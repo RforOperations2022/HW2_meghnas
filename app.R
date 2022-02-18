@@ -54,7 +54,11 @@ sidebar <- dashboardSidebar(
     #             selectize = TRUE,
     #             selected = c("no")) ,
     
-    radioButtons("hyp", "Has Hypertension?", choices = c("yes","no"), selected = c("no"))
+    radioButtons("hyp", "Has Hypertension?", choices = c("yes","no"), selected = c("no")),
+    
+    radioButtons("dia", "Has Diabetes Mellitus?", choices = c("yes","no"), selected = c("no"))
+    
+    
     
   )
 )
@@ -110,13 +114,19 @@ server <- function(input, output) {
     # Slider Filter ----------------------------------------------
     filter(age >= input$age[1] & age <= input$age[2])
     
-    # Homeworld Filter ----------------------------------------------
+    # Hypertension Filter ----------------------------------------------
     if (length(input$hyp) > 0 ) {
       MyDat <- subset(MyDat, Hypertension %in% input$hyp)
     }
     
+    # Diabetes Filter ----------------------------------------------
+    if (length(input$dia) > 0 ) {
+      MyDat <- subset(MyDat, Diabetes_mellitus %in% input$dia)
+    }
+    
     # Return dataframe ----------------------------------------------
     return(MyDat)
+
   })
   
   
